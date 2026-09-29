@@ -87,6 +87,7 @@ final class Node extends Model
             3 => 'WireGuard',
             11 => 'Vmess',
             14 => 'Trojan',
+            20 => 'VLESS (Xray)', // deploy.sh signaling 节点（VLESS + WS/TLS + 信令回落）
             default => '未知',
         };
     }

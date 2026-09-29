@@ -58,6 +58,7 @@
                                 <label class="form-label col-3 col-form-label">接入类型</label>
                                 <div class="col">
                                     <select id="sort" class="col form-select">
+                                        <option value="20">VLESS (Xray/deploy.sh)</option>
                                         <option value="14">Trojan</option>
                                         <option value="11">Vmess</option>
                                         <option value="2">TUIC</option>

@@ -70,6 +70,7 @@
                                 <label class="form-label col-3 col-form-label">接入类型</label>
                                 <div class="col">
                                     <select id="sort" class="col form-select" value="{$node->sort}">
+                                        <option value="20" {if $node->sort === 20}selected{/if}>VLESS (Xray/deploy.sh)</option>
                                         <option value="14" {if $node->sort === 14}selected{/if}>Trojan</option>
                                         <option value="11" {if $node->sort === 11}selected{/if}>Vmess</option>
                                         <option value="2" {if $node->sort === 2}selected{/if}>TUIC</option>
