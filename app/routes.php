@@ -146,6 +146,7 @@ return static function (Slim\App $app): void {
         $group->get('/node/create', App\Controllers\Admin\NodeController::class . ':create');
         $group->post('/node', App\Controllers\Admin\NodeController::class . ':add');
         $group->get('/node/{id:[0-9]+}/edit', App\Controllers\Admin\NodeController::class . ':edit');
+        $group->get('/node/{id:[0-9]+}/xray', App\Controllers\Admin\NodeController::class . ':xray');
         $group->post(
             '/node/{id:[0-9]+}/reset_password',
             App\Controllers\Admin\NodeController::class . ':resetPassword'

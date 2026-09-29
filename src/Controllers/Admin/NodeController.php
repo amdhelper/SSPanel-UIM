@@ -9,6 +9,7 @@ use App\Models\Config;
 use App\Models\Node;
 use App\Services\I18n;
 use App\Services\Notification;
+use App\Services\Xray;
 use App\Utils\Tools;
 use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\ResponseInterface;
@@ -340,7 +341,10 @@ final class NodeController extends BaseController
         $nodes = (new Node())->orderBy('id', 'desc')->get();
 
         foreach ($nodes as $node) {
-            $node->op = '<button class="btn btn-red" id="delete-node-' . $node->id . '" 
+            $configBtn = ((int) $node->sort === Xray::SORT_VLESS)
+                ? '<a class="btn btn-green" href="/admin/node/' . $node->id . '/xray">生成配置</a>'
+                : '';
+            $node->op = $configBtn . '<button class="btn btn-red" id="delete-node-' . $node->id . '" 
             onclick="deleteNode(' . $node->id . ')">删除</button>
             <button class="btn btn-orange" id="copy-node-' . $node->id . '" 
             onclick="copyNode(' . $node->id . ')">复制</button>
@@ -356,5 +360,66 @@ final class NodeController extends BaseController
         return $response->withJson([
             'nodes' => $nodes,
         ]);
+    }
+
+    /**
+     * 后台查看 VLESS(Xray/deploy.sh) 节点的生成配置、部署命令与订阅示例。
+     *
+     * 支持 ?format=json 返回 JSON（供 wumi「信令节点管理」Tab 复用）。
+     * 可选 ?api_url= &secret_key= 用于填充 auto-install 部署命令。
+     */
+    public function xray(ServerRequest $request, Response $response, array $args): ResponseInterface
+    {
+        $node = (new Node())->find($args['id']);
+
+        if ($node === null) {
+            return $response->withJson([
+                'ret' => 0,
+                'msg' => '节点不存在',
+            ]);
+        }
+
+        if ((int) $node->sort !== Xray::SORT_VLESS) {
+            return $response->withJson([
+                'ret' => 0,
+                'msg' => '该节点不是 VLESS(Xray) 类型',
+            ]);
+        }
+
+        $config = Xray::parseConfig($node->custom_config);
+        $uuid = (string) ($config['uuid'] ?? '');
+
+        $deploy_command = Xray::buildDeployCommand(
+            $config,
+            (string) $node->server,
+            (string) ($request->getParam('api_url') ?? ''),
+            (string) ($request->getParam('secret_key') ?? ''),
+            (string) $node->name
+        );
+        $vless_uri = Xray::buildVlessUri($uuid, (string) $node->server, $config, (string) $node->name);
+
+        if ($request->getParam('format') === 'json') {
+            return $response->withJson([
+                'ret' => 1,
+                'data' => [
+                    'node_id' => $node->id,
+                    'name' => $node->name,
+                    'server' => $node->server,
+                    'sort' => (int) $node->sort,
+                    'config' => Xray::generateServerConfig($config),
+                    'deploy_command' => $deploy_command,
+                    'vless_uri_example' => $vless_uri,
+                ],
+            ]);
+        }
+
+        return $response->write(
+            $this->view()
+                ->assign('node', $node)
+                ->assign('config_json', Xray::generateServerConfigJson($config))
+                ->assign('deploy_command', $deploy_command)
+                ->assign('vless_uri_example', $vless_uri)
+                ->fetch('admin/node/xray.tpl')
+        );
     }
 }
