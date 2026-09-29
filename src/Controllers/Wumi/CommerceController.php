@@ -34,7 +34,10 @@ use function time;
  *   GET  /wumi/api/v1/subscription   当前用户订阅（流量/到期/订阅链接/vless 节点）
  *   GET  /wumi/api/v1/orders         当前用户订单
  *   POST /wumi/api/v1/orders         下单（复用与网站一致的商品/优惠码/限购规则）
- *   GET  /wumi/api/v1/admin/overview 收费总览（订阅用户数/订单/收入）
+ *   GET  /wumi/api/v1/billing/overview 收费总览（订阅用户数/订单/收入）
+ *
+ * ⚠️ 路径**不得包含 `/admin`**：SSPanel 全局 ErrorHandler 会把任何含 `/admin`
+ * 的 URL（非管理员）重定向到 /auth/login（实测 302），故用 `/billing/overview`。
  */
 final class CommerceController extends BaseController
 {
@@ -238,7 +241,7 @@ final class CommerceController extends BaseController
         ]);
     }
 
-    /** GET /wumi/api/v1/admin/overview —— 收费总览 */
+    /** GET /wumi/api/v1/billing/overview —— 收费总览 */
     public function overview(ServerRequest $request, Response $response, array $args): ResponseInterface
     {
         $since = time() - 30 * 86400;

@@ -1,0 +1,40 @@
+# SSPanel-UIM 本地开发/验证栈（P7，2026-09-30）
+#
+#   docker compose -f docker/dev/docker-compose.dev.yml up -d --build
+#   docker compose -f docker/dev/docker-compose.dev.yml exec php composer install
+#   docker compose -f docker/dev/docker-compose.dev.yml exec php php xcat Migration new
+#
+# 端口：面板 http://localhost:18080 ，MariaDB 13306，Redis 16379
+
+services:
+  db:
+    image: mariadb:10.11
+    command: --sql-mode="" --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MARIADB_ROOT_PASSWORD: sspanel
+      MARIADB_DATABASE: sspanel
+    ports:
+      - "13306:3306"
+    volumes:
+      - sspanel_dbdata:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "16379:6379"
+
+  php:
+    build:
+      context: ../..
+      dockerfile: docker/dev/Dockerfile.dev
+    working_dir: /app
+    volumes:
+      - ../..:/app
+    ports:
+      - "18080:8080"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  sspanel_dbdata:

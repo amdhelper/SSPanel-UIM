@@ -98,7 +98,21 @@
   - wumi 后端：`GET /ladder/plans|subscription|orders`、`POST /ladder/orders`。
   - wumi 前端：发现页「实用工具」新增「梯子」入口 → `LadderScreen`（套餐/我的订阅/我的订单）。
   - 契约 registry 1.35.0 / SPEC 0.3.23。
-- **P7** 端到端验证 + 部署 + 知识库同步（部分已完成：知识库同步已做；部署待接 SSPanel 实例）。
+- **P7 ✅ 已做（本地端到端）** 
+  - 本地开发栈：`docker/dev/`（php 8.3-CLI + MariaDB + Redis）→ `bootstrap_dev.sh` 建库/导入设置/造数据
+    → `smoke_wumi_api.sh` 冒烟（**19/19 通过**）。
+  - 跨仓库契约：wumi `internal/service/ladder_live_test.go` 直连本机 SSPanel 实例
+    （plans/nodes/subscription/vless 串/下单/订单/收费总览/节点同步 全通过）。
+  - ⏳ 未做：部署到线上 + 爸爸真机验收（会改线上系统，需明确授权）。
+
+## 6. 实测踩到的坑（务必遵守）
+
+- 🔴 **SSPanel 全局 `ErrorHandler` 会把任何含 `/admin` 的 URL 重定向到 `/auth/login`**
+  （非管理员，实测 302）——内部 API 路径**不得包含 `/admin`**，
+  故收费总览用 `/wumi/api/v1/billing/overview`（原 `/admin/overview` 被拦）。
+- 🔴 `php xcat Migration new` **只跑「最早一个」迁移**（并把 db_version 设为它），
+  之后必须再跑 `php xcat Migration latest` 才能把全部迁移（含新增的）应用上。
+- 🔴 本地 php 镜像缺 `ext-gmp` 时 composer 装不上（`starkbank/ecdsa` 依赖 alipaysdk 链）。
 
 ## 5. 本分支已完成内容（可核验）
 

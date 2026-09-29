@@ -334,7 +334,7 @@ return static function (Slim\App $app): void {
             $api->get('/subscription', App\Controllers\Wumi\CommerceController::class . ':subscription');
             $api->get('/orders', App\Controllers\Wumi\CommerceController::class . ':orders');
             $api->post('/orders', App\Controllers\Wumi\CommerceController::class . ':createOrder');
-            $api->get('/admin/overview', App\Controllers\Wumi\CommerceController::class . ':overview');
+            $api->get('/billing/overview', App\Controllers\Wumi\CommerceController::class . ':overview');
         })->add(new WumiApi());
     });
 

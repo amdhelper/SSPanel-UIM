@@ -1,0 +1,19 @@
+# SSPanel-UIM 开发/验证用镜像（P7 端到端实测，2026-09-30）
+#
+# 只用于本地跑通：PHP 8.3-CLI + 面板所需扩展 + composer。
+# 生产部署请按官方文档（nginx + php-fpm + MariaDB + Redis）。
+FROM php:8.3-cli
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libzip-dev libyaml-dev libgmp-dev unzip git \
+    && docker-php-ext-install bcmath gmp pdo_mysql zip \
+    && pecl install redis yaml \
+    && docker-php-ext-enable redis yaml \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+# 用 PHP 内置服务器跑面板：把 public/index.php 当路由脚本
+CMD ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/index.php"]
