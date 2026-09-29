@@ -85,10 +85,20 @@
     归一匹配，回灌 `node_heartbeat`/`online_user`/`ipv4`/`custom_config.wumi_*`。
   - 路由：`GET /wumi/api/v1/nodes`（配置态清单）、`POST /wumi/api/v1/nodes/sync`。
   - 命令：`php xcat WumiSyncNodes`。
-- **P4** wumi 站务管理 Tab「信令节点管理」。
-- **P5** wumi 站务管理 Tab「收费管理」（xray + zen 等统一订阅/付费）。
-- **P6** 发现页「梯子」。
-- **P7** 端到端验证 + 部署 + 知识库同步。
+- **P4 ✅ 已做** wumi 站务管理 Tab「信令节点管理」
+  - wumi 后端：`App\...\LadderService`（机器密钥代理 SSPanel）、`LadderAdminHandler`
+    （`GET /admin/ladder/nodes` 配置态+运行态合并、`POST /admin/ladder/nodes/sync`）。
+  - wumi 前端：station_admin_screen 第 7 Tab；l10n 12 键；契约 registry 1.34.0 / SPEC 0.3.22。
+- **P5 ✅ 已做** wumi 站务管理 Tab「收费管理」
+  - SSPanel：`GET /wumi/api/v1/admin/overview`（付费用户/绑定用户/订单/收入/在售商品）。
+  - wumi 后端：`GET /admin/ladder/overview`；前端 station_admin 第 8 Tab；l10n 7 键。
+- **P6 ✅ 已做** 发现页「梯子」
+  - SSPanel：`GET /wumi/api/v1/plans|subscription|orders` + `POST /wumi/api/v1/orders`
+    （订阅含流量/到期/订阅链接/可用节点 + `vless://` 串；下单复用网站规则生成 Order+Invoice）。
+  - wumi 后端：`GET /ladder/plans|subscription|orders`、`POST /ladder/orders`。
+  - wumi 前端：发现页「实用工具」新增「梯子」入口 → `LadderScreen`（套餐/我的订阅/我的订单）。
+  - 契约 registry 1.35.0 / SPEC 0.3.23。
+- **P7** 端到端验证 + 部署 + 知识库同步（部分已完成：知识库同步已做；部署待接 SSPanel 实例）。
 
 ## 5. 本分支已完成内容（可核验）
 
