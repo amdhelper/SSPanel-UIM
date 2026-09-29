@@ -70,32 +70,54 @@
 
 ## 4. 分阶段计划
 
-- **P1（本分支已做）** SSPanel 支持 deploy.sh Xray(VLESS+WS/TLS) 节点
-  - [x] `App\Services\Xray`：`generateServerConfig()` 逐字段对齐 deploy.sh；`buildVlessUri()`；
-        `buildDeployCommand()`；`buildRegisterPayload()`。
-  - [x] `Node.sort = 20` → `VLESS (Xray)`；后台建/改节点下拉新增该类型。
-  - [x] 新增 `vless` 订阅类型（`App\Services\Subscribe\VLESS`）。
-  - [x] 回归测试 `tests/Integration/Services/XrayTest.php`（无 DB 依赖）。
-  - [ ] 后台节点页「生成 Xray 配置 / 部署命令」按钮与预览页。
-  - [ ] `/mod_mu/nodes/{id}/info` 对 sort=20 下发 VLESS 节点信息。
-- **P2** wumi 用户体系接入 SSPanel（身份映射 + 免密登录/信任链）。
-- **P3** 节点管理桥接：SSPanel 节点 ↔ wumi `signaling_nodes`（配置态/运行态同步 + 心跳）。
-- **P4** wumi 站务管理新增 Tab：**信令节点管理**（节点状况 + 等级/倍率/限速/流量/设备数）。
-- **P5** wumi 站务管理新增 Tab：**收费管理**（xray + zen 等统一订阅/付费状况）。
-- **P6** wumi 发现页新增「**梯子**」：套餐选购 → 下单支付 → 我的订阅 → 节点/流量/订阅链接/二维码。
-- **P7** 端到端验证、部署、知识库同步。
+- **P1 ✅（已合并）** SSPanel 支持 deploy.sh Xray(VLESS+WS/TLS) 节点
+  - `App\Services\Xray`（配置生成器/订阅串/部署命令/注册体）；`Node.sort = 20`；
+    `vless` 订阅类型；后台「生成配置」页 `GET /admin/node/{id}/xray`；回归测试。
+- **P2 ✅ 已做** wumi 身份桥（SSPanel 侧，wumi 无需改动）
+  - 迁移 `2026093000-add_wumi_identity`：`user.wumi_user_key`（唯一） + `user.wumi_synced_at`。
+  - `App\Services\Wumi\Jwt`：零依赖 HS256（与 golang-jwt/v5 互通，已跨实现验证）。
+  - `App\Services\Wumi\Identity`：`publicKeyFromToken()` / `resolveUser()`（首访自动开户）/ `serviceToken()`。
+  - `App\Middleware\WumiApi`：`X-Wumi-Api-Key` + `X-Wumi-User-Key`。
+  - 路由：`GET /wumi/sso`（wumi→SSPanel SSO）、`GET /wumi/api/v1/me`。
+  - 配置项：`wumi_api_url` / `wumi_jwt_secret` / `wumi_api_key` / `wumi_service_key` / `wumi_sso_enabled`。
+- **P3 ✅ 已做** 节点桥（配置态↔运行态，SSPanel 侧）
+  - `App\Services\Wumi\NodeBridge`：服务账号 token 调 wumi `GET /nodes`，按 domain/public_ip
+    归一匹配，回灌 `node_heartbeat`/`online_user`/`ipv4`/`custom_config.wumi_*`。
+  - 路由：`GET /wumi/api/v1/nodes`（配置态清单）、`POST /wumi/api/v1/nodes/sync`。
+  - 命令：`php xcat WumiSyncNodes`。
+- **P4** wumi 站务管理 Tab「信令节点管理」。
+- **P5** wumi 站务管理 Tab「收费管理」（xray + zen 等统一订阅/付费）。
+- **P6** 发现页「梯子」。
+- **P7** 端到端验证 + 部署 + 知识库同步。
 
 ## 5. 本分支已完成内容（可核验）
 
 ```
+# P1
 src/Services/Xray.php                     # 配置生成器（新）
 src/Services/Subscribe/VLESS.php          # VLESS 订阅（新）
 src/Services/Subscribe.php                # 注册 vless 类型
 src/Models/Node.php                       # sort=20 => VLESS (Xray)
 src/Controllers/SubController.php         # 订阅类型白名单加 vless
+src/Controllers/Admin/NodeController.php  # 生成配置页 + 列表按钮
 resources/views/tabler/admin/node/create.tpl  # 接入类型下拉加 VLESS
 resources/views/tabler/admin/node/edit.tpl    # 同上
-tests/Integration/Services/XrayTest.php   # 回归测试（新）
+resources/views/tabler/admin/node/xray.tpl    # 生成配置页（新）
+# P2
+db/migrations/2026093000-add_wumi_identity.php  # user.wumi_user_key/synced_at（新）
+src/Services/Wumi/Jwt.php                 # 零依赖 HS256（新）
+src/Services/Wumi/Identity.php            # 身份桥（新）
+src/Middleware/WumiApi.php                # 机器密钥中间件（新）
+src/Controllers/Wumi/IdentityController.php   # sso / me（新）
+# P3
+src/Services/Wumi/NodeBridge.php          # 节点桥（新）
+src/Controllers/Wumi/NodeController.php   # nodes / nodes.sync（新）
+src/Command/WumiSyncNodes.php             # php xcat WumiSyncNodes（新）
+app/routes.php                            # /wumi 路由组
+config/settings.json                      # wumi_* 配置项
+tests/Integration/Services/XrayTest.php        # 回归测试（新）
+tests/Integration/Services/WumiIdentityTest.php # 回归测试（新）
 ```
 
-验证方式：`php -l` 全绿 + 独立断言脚本 30+ 项全通过（生成配置与 deploy.sh 输出逐字段一致）。
+验证方式：`php -l` 全绿；独立断言脚本 30+（Xray）+ 13（身份桥）全通过；
+跨实现互操作：PHP 签发 HS256 token → Go 用 wumi 同款 `golang-jwt/jwt/v5` 解析成功、错密钥被拒。

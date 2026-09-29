@@ -6,6 +6,7 @@ use App\Middleware\Admin;
 use App\Middleware\Guest;
 use App\Middleware\NodeToken;
 use App\Middleware\User;
+use App\Middleware\WumiApi;
 use Slim\Routing\RouteCollectorProxy;
 
 return static function (Slim\App $app): void {
@@ -318,6 +319,19 @@ return static function (Slim\App $app): void {
         $group->post('/invoice/{id:[0-9]+}/mark_paid', App\Controllers\Admin\InvoiceController::class . ':markPaid');
         $group->post('/invoice/ajax', App\Controllers\Admin\InvoiceController::class . ':ajax');
     })->add(new Admin());
+    // wumi 集成：身份桥（SSO）+ 内部 API（机器密钥）
+    $app->group('/wumi', static function (RouteCollectorProxy $group): void {
+        // wumi → SSPanel 单点登录：?token=<wumi access JWT>
+        $group->get('/sso', App\Controllers\Wumi\IdentityController::class . ':sso');
+
+        // 内部 API（wumi 后端以 X-Wumi-Api-Key 调用）
+        $group->group('/api/v1', static function (RouteCollectorProxy $api): void {
+            $api->get('/me', App\Controllers\Wumi\IdentityController::class . ':me');
+            $api->get('/nodes', App\Controllers\Wumi\NodeController::class . ':index');
+            $api->post('/nodes/sync', App\Controllers\Wumi\NodeController::class . ':sync');
+        })->add(new WumiApi());
+    });
+
     // WebAPI
     $app->group('/mod_mu', static function (RouteCollectorProxy $group): void {
         // 节点

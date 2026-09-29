@@ -1816,5 +1816,50 @@
         "type": "string",
         "default": "meta.llama3-8b-instruct-v1:0",
         "mark": "AWS Bedrock Model ID"
+    },
+    {
+        "item": "wumi_api_url",
+        "value": "",
+        "class": "wumi",
+        "is_public": 1,
+        "type": "string",
+        "default": "",
+        "mark": "wumi 后端地址（如 https://1230611.xyz）"
+    },
+    {
+        "item": "wumi_jwt_secret",
+        "value": "",
+        "class": "wumi",
+        "is_public": 0,
+        "type": "string",
+        "default": "",
+        "mark": "wumi JWT 密钥（与后端 JWT_SECRET 一致，用于身份桥/服务账号）"
+    },
+    {
+        "item": "wumi_api_key",
+        "value": "",
+        "class": "wumi",
+        "is_public": 0,
+        "type": "string",
+        "default": "",
+        "mark": "wumi 内部 API 机器密钥（wumi 后端调用本面板时校验 X-Wumi-Api-Key）"
+    },
+    {
+        "item": "wumi_service_key",
+        "value": "sspanel-service",
+        "class": "wumi",
+        "is_public": 0,
+        "type": "string",
+        "default": "sspanel-service",
+        "mark": "反向调用 wumi 时的服务账号标识（JWT sub）"
+    },
+    {
+        "item": "wumi_sso_enabled",
+        "value": "1",
+        "class": "wumi",
+        "is_public": 1,
+        "type": "bool",
+        "default": "1",
+        "mark": "启用 wumi 单点登录（/wumi/sso）"
     }
 ]
