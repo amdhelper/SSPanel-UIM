@@ -329,6 +329,12 @@ return static function (Slim\App $app): void {
             $api->get('/me', App\Controllers\Wumi\IdentityController::class . ':me');
             $api->get('/nodes', App\Controllers\Wumi\NodeController::class . ':index');
             $api->post('/nodes/sync', App\Controllers\Wumi\NodeController::class . ':sync');
+            // 梯子/付费订阅（P5/P6）
+            $api->get('/plans', App\Controllers\Wumi\CommerceController::class . ':plans');
+            $api->get('/subscription', App\Controllers\Wumi\CommerceController::class . ':subscription');
+            $api->get('/orders', App\Controllers\Wumi\CommerceController::class . ':orders');
+            $api->post('/orders', App\Controllers\Wumi\CommerceController::class . ':createOrder');
+            $api->get('/admin/overview', App\Controllers\Wumi\CommerceController::class . ':overview');
         })->add(new WumiApi());
     });
 
