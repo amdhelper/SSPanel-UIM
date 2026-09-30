@@ -136,6 +136,32 @@
 
 验证：`bash docker/dev/smoke_wumi_admin.sh` → **42/42 PASS**（幂等）；`pest tests/Integration/Services` → 19 passed。
 
+## 8. P11 ✅ 已做 —— 收费管理补齐（优惠码 / 礼品卡 / 流水 / 支付网关）+ 节点部署配置
+
+> 爸爸 2026-09-30「先补」：把上一轮列出的缺口补齐。
+
+新增内部 API（`/wumi/api/v1`，`X-Wumi-Api-Key`）：
+
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| GET/POST | `/coupons` · `/coupons/{id}` · `/coupons/{id}/disable` · DELETE `/coupons/{id}` | 优惠码 列表/新建/修改/禁用/删除（percentage·fixed，商品限定/次数/新用户限购） |
+| GET/POST | `/gift-cards` · DELETE `/gift-cards/{id}` | 礼品卡 列表/批量生成（面值 + 12/18/24/30/36 位）/删除 |
+| GET | `/billing/paybacks` · `/billing/paylists` · `/billing/money-logs` | 邀请返利 / 网关交易 / 余额变动流水（分页） |
+| GET/POST | `/billing/gateways` | 支付网关清单（易支付/Stripe/PayPal/当面付/Cryptomus/Smogate）启停 + 财务配置项；**密钥只回传是否已配置，绝不回传明文**；只允许写 class=billing 的项 |
+| GET | `/nodes/{id}/deploy` | 生成该 VLESS 节点的 Xray config.json + deploy.sh auto-install 命令 + 订阅示例串 |
+
+新增文件：`src/Controllers/Wumi/{Coupon,GiftCard,BillingLog,PaymentGatewayAdmin}Controller.php`。
+
+**未做（有意）**：SSPanel 的「工单 / 公告」未接入 —— 那是面板站内功能，wumi 用户不经过面板 UI，
+接进来也没有入口产生数据；若要做，应做成 wumi 内的「梯子客服/公告」，属独立功能待定。
+
+实测：`bash docker/dev/smoke_wumi_admin.sh` → **73/73 PASS**（幂等；含优惠码增改禁删、
+礼品卡生成删除、三类流水、网关密钥掩码与非法项拒绝、节点部署配置）。
+
+## 9. P10 ✅ 已做 —— wumi 侧写能力 + 前端
+
+见 `references` 与 wumi 仓库提交：站务管理 Tab7/Tab8 + 用户详情页「梯子订阅（SSPanel）」卡片。
+
 ## 6. 实测踩到的坑（务必遵守）
 
 - 🔴 **SSPanel 全局 `ErrorHandler` 会把任何含 `/admin` 的 URL 重定向到 `/auth/login`**

@@ -337,6 +337,7 @@ return static function (Slim\App $app): void {
             $api->delete('/nodes/{id:[0-9]+}', App\Controllers\Wumi\NodeAdminController::class . ':delete');
             $api->post('/nodes/{id:[0-9]+}/toggle', App\Controllers\Wumi\NodeAdminController::class . ':toggle');
             $api->post('/nodes/{id:[0-9]+}/reset-bandwidth', App\Controllers\Wumi\NodeAdminController::class . ':resetBandwidth');
+            $api->get('/nodes/{id:[0-9]+}/deploy', App\Controllers\Wumi\NodeAdminController::class . ':deploy');
             // 梯子/付费订阅（P5/P6）
             $api->get('/plans', App\Controllers\Wumi\CommerceController::class . ':plans');
             $api->get('/subscription', App\Controllers\Wumi\CommerceController::class . ':subscription');
@@ -359,6 +360,20 @@ return static function (Slim\App $app): void {
             $api->get('/users/{id:[0-9]+}', App\Controllers\Wumi\UserAdminController::class . ':show');
             $api->post('/users/{id:[0-9]+}', App\Controllers\Wumi\UserAdminController::class . ':update');
             $api->post('/users/{id:[0-9]+}/reset-traffic', App\Controllers\Wumi\UserAdminController::class . ':resetTraffic');
+            // 收费管理（优惠码 / 礼品卡 / 流水 / 支付网关）
+            $api->get('/coupons', App\Controllers\Wumi\CouponAdminController::class . ':index');
+            $api->post('/coupons', App\Controllers\Wumi\CouponAdminController::class . ':create');
+            $api->post('/coupons/{id:[0-9]+}', App\Controllers\Wumi\CouponAdminController::class . ':update');
+            $api->post('/coupons/{id:[0-9]+}/disable', App\Controllers\Wumi\CouponAdminController::class . ':disable');
+            $api->delete('/coupons/{id:[0-9]+}', App\Controllers\Wumi\CouponAdminController::class . ':delete');
+            $api->get('/gift-cards', App\Controllers\Wumi\GiftCardAdminController::class . ':index');
+            $api->post('/gift-cards', App\Controllers\Wumi\GiftCardAdminController::class . ':create');
+            $api->delete('/gift-cards/{id:[0-9]+}', App\Controllers\Wumi\GiftCardAdminController::class . ':delete');
+            $api->get('/billing/paybacks', App\Controllers\Wumi\BillingLogAdminController::class . ':paybacks');
+            $api->get('/billing/paylists', App\Controllers\Wumi\BillingLogAdminController::class . ':paylists');
+            $api->get('/billing/money-logs', App\Controllers\Wumi\BillingLogAdminController::class . ':moneyLogs');
+            $api->get('/billing/gateways', App\Controllers\Wumi\PaymentGatewayAdminController::class . ':show');
+            $api->post('/billing/gateways', App\Controllers\Wumi\PaymentGatewayAdminController::class . ':save');
         })->add(new WumiApi());
     });
 

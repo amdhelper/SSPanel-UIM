@@ -130,6 +130,62 @@ if [ "$IID" != "0" ]; then
   pycheck "账单标记已支付" "d['ret']==1 and d['data']['status']=='paid_admin'"
 fi
 
+echo "== 收费管理：优惠码 =="
+CODE="SMOKE$RANDOM"
+codecheck "GET /coupons → 200" 200 "$(req GET /wumi/api/v1/coupons)"
+pycheck "优惠码列表为数组" "d['ret']==1 and isinstance(d['data'], list)"
+
+codecheck "POST /coupons（新建）→ 200" 200 "$(jpost /wumi/api/v1/coupons "{\"code\":\"$CODE\",\"type\":\"percentage\",\"value\":10,\"use_time\":1,\"total_use_time\":-1,\"new_user\":0,\"generate_method\":\"char\"}")"
+pycheck "新建优惠码返回实体" "d['ret']==1 and d['data']['coupon']['code']=='$CODE'"
+CID=$(python3 -c "import json;print(json.load(open('$BODY'))['data']['coupon']['id'])" 2>/dev/null || echo 0)
+
+codecheck "POST /coupons/{id}（改额度）→ 200" 200 "$(jpost "/wumi/api/v1/coupons/$CID" '{"value":20}')"
+pycheck "改额度生效" "d['ret']==1 and d['data']['coupon']['value']==20"
+codecheck "POST /coupons/{id}/disable → 200" 200 "$(req POST "/wumi/api/v1/coupons/$CID/disable")"
+pycheck "禁用生效" "d['ret']==1 and d['data']['coupon']['disabled']==1"
+codecheck "DELETE /coupons/{id} → 200" 200 "$(req DELETE "/wumi/api/v1/coupons/$CID")"
+pycheck "删除优惠码" "d['ret']==1 and d['data']['deleted']==True"
+
+echo "== 收费管理：礼品卡 =="
+codecheck "GET /gift-cards → 200" 200 "$(req GET /wumi/api/v1/gift-cards)"
+codecheck "POST /gift-cards（生成 2 张 12 位）→ 200" 200 "$(jpost /wumi/api/v1/gift-cards '{"card_number":2,"card_value":10,"card_length":12}')"
+pycheck "生成 2 张礼品卡" "d['ret']==1 and d['data']['generated']==2 and len(d['data']['cards'])==2"
+GIDS=$(python3 -c "
+import json, urllib.request
+r = urllib.request.Request('$BASE/wumi/api/v1/gift-cards', headers={'X-Wumi-Api-Key': '$APIKEY'})
+d = json.load(urllib.request.urlopen(r))
+print(' '.join(str(c['id']) for c in d['data'][:2]))" 2>/dev/null || echo "")
+for gid in $GIDS; do
+  codecheck "DELETE /gift-cards/$gid（清理）→ 200" 200 "$(req DELETE "/wumi/api/v1/gift-cards/$gid")"
+  pycheck "删除礼品卡" "d['ret']==1 and d['data']['deleted']==True"
+done
+
+echo "== 收费管理：流水（返利 / 网关 / 余额）=="
+codecheck "GET /billing/paylists → 200" 200 "$(req GET '/wumi/api/v1/billing/paylists?size=5')"
+pycheck "交易流水分页字段" "d['ret']==1 and all(k in d['data'] for k in ('total','paylists','pages'))"
+codecheck "GET /billing/money-logs → 200" 200 "$(req GET '/wumi/api/v1/billing/money-logs?size=5')"
+pycheck "余额流水分页字段" "d['ret']==1 and all(k in d['data'] for k in ('total','money_logs','pages'))"
+codecheck "GET /billing/paybacks → 200" 200 "$(req GET '/wumi/api/v1/billing/paybacks?size=5')"
+pycheck "返利记录分页字段" "d['ret']==1 and all(k in d['data'] for k in ('total','paybacks','pages'))"
+
+echo "== 收费管理：支付网关 =="
+codecheck "GET /billing/gateways → 200" 200 "$(req GET /wumi/api/v1/billing/gateways)"
+pycheck "网关清单 + 密钥不回传明文" "d['ret']==1 and len(d['data']['gateways'])>=1 and all(k in d['data']['gateways'][0] for k in ('slug','label','active')) and any(s['secret'] for s in d['data']['settings']) and all(s['value']=='' for s in d['data']['settings'] if s['secret'])"
+codecheck "POST /billing/gateways（写非密钥项）→ 200" 200 "$(jpost /wumi/api/v1/billing/gateways '{"settings":{"stripe_currency":"USD"}}')"
+pycheck "写配置成功" "d['ret']==1 and len(d['data']['gateways'])>=1"
+codecheck "POST /billing/gateways（非法配置项）→ ret=0" 200 "$(jpost /wumi/api/v1/billing/gateways '{"settings":{"totally_bogus_item":"1"}}')"
+pycheck "非法配置项被拒" "d['ret']==0"
+
+echo "== 节点：生成部署配置 / 部署命令 =="
+NODE_L=$(python3 -c "
+import json, urllib.request
+r = urllib.request.Request('$BASE/wumi/api/v1/nodes', headers={'X-Wumi-Api-Key': '$APIKEY'})
+d = json.load(urllib.request.urlopen(r))
+ids = [n['id'] for n in d['data'] if n.get('sort') == 20]
+print(ids[0] if ids else 0)" 2>/dev/null || echo 0)
+codecheck "GET /nodes/{id}/deploy → 200" 200 "$(req GET "/wumi/api/v1/nodes/$NODE_L/deploy?api_url=http://panel.local&secret_key=sk-test")"
+pycheck "含 config_json / 部署命令 / 订阅示例" "d['ret']==1 and 'fallbacks' in d['data']['config_json'] and 'auto-install' in d['data']['deploy_command'] and d['data']['vless_uri_example'].startswith('vless://')"
+
 echo
 echo "结果: pass=$pass fail=$fail"
 [ "$fail" -eq 0 ] || exit 1

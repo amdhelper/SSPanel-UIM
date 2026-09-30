@@ -148,6 +148,48 @@ final class NodeAdminController extends BaseController
         return self::ok($response, ['node_id' => (int) $node->id, 'node_bandwidth' => 0]);
     }
 
+    /**
+     * GET /wumi/api/v1/nodes/{id}/deploy
+     *
+     * 生成该 VLESS(Xray) 节点的：与 deploy.sh 逐字段对齐的 Xray config.json、
+     * 一键部署命令（signaling auto-install）、订阅示例串。
+     * 可带 ?api_url= &secret_key= 填充部署命令。
+     */
+    public function deploy(ServerRequest $request, Response $response, array $args): ResponseInterface
+    {
+        $node = (new Node())->find($args['id']);
+        if ($node === null) {
+            return self::fail($response, '节点不存在');
+        }
+        if ((int) $node->sort !== Xray::SORT_VLESS) {
+            return self::fail($response, '该节点不是 VLESS(Xray) 类型，无法生成部署配置');
+        }
+
+        $config = Xray::parseConfig($node->custom_config);
+        $uuid = (string) ($config['uuid'] ?? '');
+
+        return self::ok($response, [
+            'node_id' => (int) $node->id,
+            'name' => $node->name,
+            'server' => $node->server,
+            'config' => Xray::generateServerConfig($config),
+            'config_json' => Xray::generateServerConfigJson($config),
+            'deploy_command' => Xray::buildDeployCommand(
+                $config,
+                (string) $node->server,
+                (string) $request->getParam('api_url', ''),
+                (string) $request->getParam('secret_key', ''),
+                (string) $node->name
+            ),
+            'vless_uri_example' => Xray::buildVlessUri(
+                $uuid,
+                (string) $node->server,
+                $config,
+                (string) $node->name
+            ),
+        ]);
+    }
+
     /** POST /wumi/api/v1/nodes/import —— 用分享链接/订阅链接导入节点 */
     public function import(ServerRequest $request, Response $response, array $args): ResponseInterface
     {
