@@ -221,7 +221,19 @@ final class NodeAdminController extends BaseController
             }
 
             $server = trim((string) $item['server']);
-            $existing = (new Node())->where('server', $server)->first();
+            $port = (int) ($item['custom_config']['port'] ?? 0);
+
+            // 去重键 = 地址 + 端口（同一台机器上的不同端口是不同节点，
+            // 如 HA/多入口；只有「同地址同端口」才算同一个节点，重导即更新）。
+            $existing = null;
+            foreach ((new Node())->where('server', $server)->get() as $candidate) {
+                $candidateConfig = json_decode((string) $candidate->custom_config, true);
+                $candidatePort = is_array($candidateConfig) ? (int) ($candidateConfig['port'] ?? 0) : 0;
+                if ($candidatePort === $port) {
+                    $existing = $candidate;
+                    break;
+                }
+            }
 
             if ($existing !== null) {
                 $existing->custom_config = json_encode($item['custom_config'] ?? []);

@@ -53,6 +53,24 @@ IMPORTED_ID=$(python3 -c "import json;print(json.load(open('$BODY'))['data']['no
 pycheck "导入节点为 VLESS 且带 ws_path" "d['data']['nodes'][0]['sort']==20 and '/abc123/' in json.dumps(d['data']['nodes'][0]['custom_config'])"
 codecheck "DELETE 导入节点（清理）→ 200" 200 "$(req DELETE "/wumi/api/v1/nodes/$IMPORTED_ID")"
 
+echo "== 节点导入：同地址不同端口 = 不同节点 =="
+ML1='vless://aaaa1111-2222-3333-4444-555555555555@multi-port.test:443?encryption=none&security=tls&type=ws&path=%2Fa%2F&host=multi-port.test#MP-443'
+ML2='vless://bbbb1111-2222-3333-4444-555555555555@multi-port.test:8443?encryption=none&security=tls&type=ws&path=%2Fb%2F&host=multi-port.test#MP-8443'
+codecheck "导入 443 端口 → 200" 200 "$(jpost /wumi/api/v1/nodes/import "{\"input\":\"$ML1\"}")"
+pycheck "443 解析成功" "d['ret']==1 and d['data']['parsed']==1"
+codecheck "导入 8443 端口 → 200" 200 "$(jpost /wumi/api/v1/nodes/import "{\"input\":\"$ML2\"}")"
+pycheck "8443 解析成功" "d['ret']==1 and d['data']['parsed']==1"
+MP_IDS=$(python3 -c "
+import json, urllib.request
+r = urllib.request.Request('$BASE/wumi/api/v1/nodes', headers={'X-Wumi-Api-Key': '$APIKEY'})
+d = json.load(urllib.request.urlopen(r))
+print(' '.join(str(n['id']) for n in d['data'] if n.get('server') == 'multi-port.test'))" 2>/dev/null || echo "")
+MP_COUNT=$(echo $MP_IDS | wc -w)
+codecheck "同地址不同端口 → 2 个独立节点" 2 "$MP_COUNT"
+for mid in $MP_IDS; do
+  codecheck "DELETE /nodes/$mid（清理）→ 200" 200 "$(req DELETE "/wumi/api/v1/nodes/$mid")"
+done
+
 echo "== 节点管理：增删改 / 启停 / 重置流量 =="
 codecheck "POST /nodes（新建）→ 200" 200 "$(jpost /wumi/api/v1/nodes '{"name":"smoke-node","server":"smoke-node.test","sort":20,"node_class":1,"traffic_rate":1,"node_speedlimit":100,"node_bandwidth_limit":500,"type":true,"custom_config":{"port":443,"ws_path":"/smoke/"}}')"
 pycheck "新建返回 node_id" "d['ret']==1 and d['data']['node_id']>0"
