@@ -105,6 +105,37 @@
     （plans/nodes/subscription/vless 串/下单/订单/收费总览/节点同步 全通过）。
   - ⏳ 未做：部署到线上 + 爸爸真机验收（会改线上系统，需明确授权）。
 
+## 7. P9 ✅ 已做 —— 管理能力补齐（站点管理不再只是「只读看板」）
+
+> 背景：爸爸 2026-09-30 指出「信令节点管理/收费管理/用户管理」与 SSPanel 实际能力相差太远
+> （不能用链接加节点、不能管节点、不能设价格设商品、不能按 SSPanel 属性管用户）。
+> P9 把 SSPanel 后台的**写操作**全部通过机器密钥开放给 wumi 站务管理页。
+
+新增内部 API（均在 `/wumi/api/v1`，`X-Wumi-Api-Key` 鉴权，路径不含 `/admin`）：
+
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| POST | `/nodes/import` | **用分享链接/订阅链接导入节点**（vless/vmess/trojan/ss + base64 订阅） |
+| POST | `/nodes` | 新建节点 |
+| GET | `/nodes/{id}` | 节点详情（编辑回填） |
+| POST | `/nodes/{id}` | 修改节点（等级/倍率/限速/流量上限/组别/自定义配置…） |
+| DELETE | `/nodes/{id}` | 删除节点 |
+| POST | `/nodes/{id}/toggle` | 启用/隐藏 |
+| POST | `/nodes/{id}/reset-bandwidth` | 重置已用流量 |
+| GET/POST/DELETE | `/products[...]` | **商品与价格管理**（tabp/time/bandwidth、改价、上下架、库存、限购） |
+| GET | `/users` · `/users/{id}` | 用户列表/详情（含 SSPanel 订阅属性） |
+| POST | `/users/{id}` | 改等级/到期/流量/限速/在线 IP/组别/封禁/备注 |
+| POST | `/users/{id}/reset-traffic` | 重置用户已用流量 |
+| GET | `/billing/orders` · `/billing/invoices` | 订单/账单列表 |
+| POST | `/billing/orders/{id}/cancel` · `/activate` | 取消/标记待激活订单 |
+| DELETE | `/billing/orders/{id}` | 删除订单 |
+| POST | `/billing/invoices/{id}/mark-paid` | 标记账单已支付 |
+
+新增文件：`src/Services/Wumi/NodeImport.php`、`src/Controllers/Wumi/{NodeAdmin,ProductAdmin,UserAdmin,BillingAdmin}Controller.php`、
+`docker/dev/smoke_wumi_admin.sh`（40+ 断言）、`tests/Integration/Services/WumiNodeImportTest.php`。
+
+验证：`bash docker/dev/smoke_wumi_admin.sh` → **42/42 PASS**（幂等）；`pest tests/Integration/Services` → 19 passed。
+
 ## 6. 实测踩到的坑（务必遵守）
 
 - 🔴 **SSPanel 全局 `ErrorHandler` 会把任何含 `/admin` 的 URL 重定向到 `/auth/login`**

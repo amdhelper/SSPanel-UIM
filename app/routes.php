@@ -329,12 +329,36 @@ return static function (Slim\App $app): void {
             $api->get('/me', App\Controllers\Wumi\IdentityController::class . ':me');
             $api->get('/nodes', App\Controllers\Wumi\NodeController::class . ':index');
             $api->post('/nodes/sync', App\Controllers\Wumi\NodeController::class . ':sync');
+            // 信令节点管理（读写：用链接导入 / 增删改 / 启停 / 重置流量）
+            $api->post('/nodes/import', App\Controllers\Wumi\NodeAdminController::class . ':import');
+            $api->post('/nodes', App\Controllers\Wumi\NodeAdminController::class . ':create');
+            $api->get('/nodes/{id:[0-9]+}', App\Controllers\Wumi\NodeAdminController::class . ':show');
+            $api->post('/nodes/{id:[0-9]+}', App\Controllers\Wumi\NodeAdminController::class . ':update');
+            $api->delete('/nodes/{id:[0-9]+}', App\Controllers\Wumi\NodeAdminController::class . ':delete');
+            $api->post('/nodes/{id:[0-9]+}/toggle', App\Controllers\Wumi\NodeAdminController::class . ':toggle');
+            $api->post('/nodes/{id:[0-9]+}/reset-bandwidth', App\Controllers\Wumi\NodeAdminController::class . ':resetBandwidth');
             // 梯子/付费订阅（P5/P6）
             $api->get('/plans', App\Controllers\Wumi\CommerceController::class . ':plans');
             $api->get('/subscription', App\Controllers\Wumi\CommerceController::class . ':subscription');
             $api->get('/orders', App\Controllers\Wumi\CommerceController::class . ':orders');
             $api->post('/orders', App\Controllers\Wumi\CommerceController::class . ':createOrder');
             $api->get('/billing/overview', App\Controllers\Wumi\CommerceController::class . ':overview');
+            // 收费管理（商品/价格 + 订单/账单）
+            $api->get('/products', App\Controllers\Wumi\ProductAdminController::class . ':index');
+            $api->post('/products', App\Controllers\Wumi\ProductAdminController::class . ':create');
+            $api->post('/products/{id:[0-9]+}', App\Controllers\Wumi\ProductAdminController::class . ':update');
+            $api->delete('/products/{id:[0-9]+}', App\Controllers\Wumi\ProductAdminController::class . ':delete');
+            $api->get('/billing/orders', App\Controllers\Wumi\BillingAdminController::class . ':orders');
+            $api->post('/billing/orders/{id:[0-9]+}/cancel', App\Controllers\Wumi\BillingAdminController::class . ':cancelOrder');
+            $api->post('/billing/orders/{id:[0-9]+}/activate', App\Controllers\Wumi\BillingAdminController::class . ':activateOrder');
+            $api->delete('/billing/orders/{id:[0-9]+}', App\Controllers\Wumi\BillingAdminController::class . ':deleteOrder');
+            $api->get('/billing/invoices', App\Controllers\Wumi\BillingAdminController::class . ':invoices');
+            $api->post('/billing/invoices/{id:[0-9]+}/mark-paid', App\Controllers\Wumi\BillingAdminController::class . ':markPaid');
+            // 用户管理（SSPanel 属性）
+            $api->get('/users', App\Controllers\Wumi\UserAdminController::class . ':index');
+            $api->get('/users/{id:[0-9]+}', App\Controllers\Wumi\UserAdminController::class . ':show');
+            $api->post('/users/{id:[0-9]+}', App\Controllers\Wumi\UserAdminController::class . ':update');
+            $api->post('/users/{id:[0-9]+}/reset-traffic', App\Controllers\Wumi\UserAdminController::class . ':resetTraffic');
         })->add(new WumiApi());
     });
 
