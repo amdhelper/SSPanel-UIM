@@ -82,7 +82,10 @@ final class NodeImport
             return [];
         }
 
-        if (self::isShareLink($input)) {
+        // 单行且是分享链接 → 直接解析。
+        // 🔴 必须先判「单行」：多行粘贴（一行一条）时整段文本也以 vless:// 开头，
+        // 若在此直接 parseLink 整段，会把 12 条链接当成 1 条解析 → 解析出 0 个节点。
+        if (! preg_match('/[\r\n]/', $input) && self::isShareLink($input)) {
             $node = self::parseLink($input);
 
             return $node === null ? [] : [$node];

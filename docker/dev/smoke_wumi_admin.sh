@@ -71,6 +71,34 @@ for mid in $MP_IDS; do
   codecheck "DELETE /nodes/$mid（清理）→ 200" 200 "$(req DELETE "/wumi/api/v1/nodes/$mid")"
 done
 
+echo "== 节点导入：多行粘贴（一行一条，UI 批量粘贴的真实形态） =="
+# 🔴 回归防护：整段文本以 vless:// 开头，若 parseInput 不先判「单行」，
+# 会把多条链接当成 1 条解析 → parsed=0。
+MB1='vless://e0111111-2222-3333-4444-555555555555@batch-one.test:443?encryption=none&security=tls&type=ws&path=%2Fa%2F&host=batch-one.test#BATCH-1'
+MB2='vless://e0222222-2222-3333-4444-555555555555@batch-two.test:443?encryption=none&security=tls&type=ws&path=%2Fb%2F&host=batch-two.test#BATCH-2'
+codecheck "多行粘贴批量导入 → 200" 200 "$(WUMI_BASE="$BASE" WUMI_KEY="$APIKEY" MB1="$MB1" MB2="$MB2" python3 -c '
+import json, os, urllib.request
+payload = json.dumps({"input": os.environ["MB1"] + "\n" + os.environ["MB2"]}).encode()
+req = urllib.request.Request(os.environ["WUMI_BASE"] + "/wumi/api/v1/nodes/import", data=payload,
+    headers={"X-Wumi-Api-Key": os.environ["WUMI_KEY"], "Content-Type": "application/json"})
+try:
+    body = urllib.request.urlopen(req).read().decode()
+except Exception:
+    body = ""
+open("/tmp/wumi_admin_smoke_body", "w").write(body)
+print(200 if body else 0)
+')"
+pycheck "多行粘贴解析出 2 个节点" "d['ret']==1 and d['data']['parsed']==2"
+BATCH_IDS=$(python3 -c "
+import json, urllib.request
+r = urllib.request.Request('$BASE/wumi/api/v1/nodes', headers={'X-Wumi-Api-Key': '$APIKEY'})
+d = json.load(urllib.request.urlopen(r))
+print(' '.join(str(n['id']) for n in d['data'] if str(n.get('server', '')).startswith('batch-')))" 2>/dev/null || echo "")
+codecheck "多行粘贴 → 2 个独立节点" 2 "$(echo $BATCH_IDS | wc -w)"
+for bid in $BATCH_IDS; do
+  codecheck "DELETE /nodes/$bid（清理）→ 200" 200 "$(req DELETE "/wumi/api/v1/nodes/$bid")"
+done
+
 echo "== 节点管理：增删改 / 启停 / 重置流量 =="
 codecheck "POST /nodes（新建）→ 200" 200 "$(jpost /wumi/api/v1/nodes '{"name":"smoke-node","server":"smoke-node.test","sort":20,"node_class":1,"traffic_rate":1,"node_speedlimit":100,"node_bandwidth_limit":500,"type":true,"custom_config":{"port":443,"ws_path":"/smoke/"}}')"
 pycheck "新建返回 node_id" "d['ret']==1 and d['data']['node_id']>0"
