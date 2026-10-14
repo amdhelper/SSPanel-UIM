@@ -55,6 +55,13 @@ final class SubController extends BaseController
         }
 
         $user = $link->user();
+
+        // 🔥 2026-10-14 爸爸令：未购买梯子套餐（class=0 或已过期）的用户看不到节点细节——
+        // 订阅链接是节点配置的另一条出口，同样对未购买用户关闭（与 APP 内「只有节点名」同口径）。
+        if (! Subscribe::isSubscribed($user)) {
+            return ResponseHelper::error($response, '未开通梯子套餐或已过期');
+        }
+
         $sub_info = Subscribe::getContent($user, $subtype);
 
         $content_type = match ($subtype) {

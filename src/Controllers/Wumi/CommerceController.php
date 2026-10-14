@@ -74,9 +74,21 @@ final class CommerceController extends BaseController
             return self::fail($response, '缺少 X-Wumi-User-Key');
         }
 
+        // 🔥 2026-10-14 爸爸令：未购买梯子套餐（class=0 或已过期）的用户看不到节点
+        // 细节，只能看到节点名；订阅链接与 uuid 同样不下发。已购买保持完整信息。
+        $subscribed = Subscribe::isSubscribed($user);
+
         $nodes = [];
         $sub = Subscribe::getUserNodes($user);
         foreach ($sub as $node) {
+            if (! $subscribed) {
+                $nodes[] = [
+                    'id' => (int) $node->id,
+                    'name' => $node->name,
+                    'locked' => true,
+                ];
+                continue;
+            }
             $uri = null;
             if ((int) $node->sort === Xray::SORT_VLESS) {
                 $uri = Xray::vlessUriForNode($node, (string) $user->uuid);
@@ -90,12 +102,14 @@ final class CommerceController extends BaseController
                 'traffic_rate' => (float) $node->traffic_rate,
                 'is_online' => $node->getNodeOnlineStatus() === 1,
                 'vless_uri' => $uri,
+                'locked' => false,
             ];
         }
 
         return self::ok($response, [
-            'sub_url' => Subscribe::getUniversalSubLink($user),
-            'uuid' => $user->uuid,
+            'subscribed' => $subscribed,
+            'sub_url' => $subscribed ? Subscribe::getUniversalSubLink($user) : '',
+            'uuid' => $subscribed ? (string) $user->uuid : '',
             'class' => (int) $user->class,
             'class_expire' => $user->class_expire,
             'expired' => strtotime((string) $user->class_expire) < time(),

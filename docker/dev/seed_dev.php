@@ -30,6 +30,15 @@ echo 'wumi 配置已写入' . PHP_EOL;
 $user = Identity::resolveUser('dev-wumi-user-key');
 echo 'wumi 用户已就绪 id=' . $user->id . ' uuid=' . $user->uuid . PHP_EOL;
 
+// 2.5) 开发验收账号视为「已购买梯子套餐」（class>=1 且未过期）。
+//      未购买（class=0）只能看到节点名——负向断言用 dev-wumi-nonbuyer-key（自动开户即 class=0）。
+if ((int) $user->class < 1 || strtotime((string) $user->class_expire) < time()) {
+    $user->class = max((int) $user->class, 1);
+    $user->class_expire = date('Y-m-d H:i:s', time() + 365 * 86400);
+    $user->save();
+    echo '开发账号订阅状态：已置为已购 class=' . $user->class . PHP_EOL;
+}
+
 // 3) 在售套餐
 $product = new Product();
 $product->type = 'tabp';

@@ -18,6 +18,8 @@ use App\Services\Subscribe\V2RayJson;
 use App\Services\Subscribe\VLESS;
 use App\Utils\Tools;
 use Illuminate\Support\Collection;
+use function strtotime;
+use function time;
 
 final class Subscribe
 {
@@ -34,6 +36,19 @@ final class Subscribe
         }
 
         return $_ENV['subUrl'] . '/sub/' . $token->token;
+    }
+
+    /**
+     * 是否持有有效的梯子套餐（class>0 且未过期）。
+     *
+     * 🔥 2026-10-14 爸爸令：未购买梯子套餐（class=0 或已过期）的用户「只能看到节点名」，
+     * 看不到节点细节，也不发放订阅链接/uuid —— 该判定单点收口在此：
+     * APP 订阅接口（Wumi\CommerceController::subscription）与订阅下载端点
+     * （SubController）共用，改口径只改这里。
+     */
+    public static function isSubscribed($user): bool
+    {
+        return (int) $user->class > 0 && strtotime((string) $user->class_expire) >= time();
     }
 
     public static function getUserNodes($user, bool $show_all_nodes = false): Collection

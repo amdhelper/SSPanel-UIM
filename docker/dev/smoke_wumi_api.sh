@@ -55,8 +55,44 @@ codecheck "GET /plans → 200" 200 "$(req GET /wumi/api/v1/plans)"
 pycheck "/plans 含在售套餐" "d['ret']==1 and len(d['data'])>=1 and d['data'][0]['price']==9.9"
 
 codecheck "GET /subscription → 200" 200 "$(req GET /wumi/api/v1/subscription -H "X-Wumi-User-Key: $USERKEY")"
-pycheck "/subscription 有订阅链接+VLESS 串" "d['ret']==1 and d['data']['sub_url'].startswith('http') and any((n.get('vless_uri') or '').startswith('vless://') for n in d['data']['nodes'])"
+pycheck "/subscription 已购：含订阅链接+VLESS 串" "d['ret']==1 and d['data']['subscribed']==True and d['data']['sub_url'].startswith('http') and any((n.get('vless_uri') or '').startswith('vless://') for n in d['data']['nodes'])"
 pycheck "/subscription 流量字段齐全" "all(k in d['data'] for k in ('traffic_used','traffic_total','class_expire','node_iplimit','node_speedlimit'))"
+
+echo "== 订阅：未购买（class=0）只能看到节点名（2026-10-14 爸爸令）=="
+NONBUYERKEY="${NONBUYERKEY:-dev-wumi-nonbuyer-key}"
+codecheck "GET /subscription（未购）→ 200" 200 "$(req GET /wumi/api/v1/subscription -H "X-Wumi-User-Key: $NONBUYERKEY")"
+pycheck "未购：节点仅剩 id/name/locked（无 server/vless_uri 等细节）" "d['ret']==1 and d['data']['subscribed']==False and len(d['data']['nodes'])>=1 and all(set(n.keys())=={'id','name','locked'} and n['locked']==True and bool(n['name']) for n in d['data']['nodes'])"
+pycheck "未购：不下发订阅链接与 uuid" "d['data']['sub_url']=='' and d['data']['uuid']==''"
+
+echo "== 订阅下载门禁（/sub）：未购不发放内容，已购恢复可用 =="
+jpost() { # PATH JSON
+  req POST "$1" -H 'Content-Type: application/json' -d "$2"
+}
+SUBTOKEN=$(python3 - <<PYEOF
+import json, urllib.request
+r = urllib.request.Request('$BASE/wumi/api/v1/subscription',
+    headers={'X-Wumi-Api-Key': '$APIKEY', 'X-Wumi-User-Key': '$USERKEY'})
+print(json.load(urllib.request.urlopen(r))['data']['sub_url'].rstrip('/').split('/')[-1])
+PYEOF
+)
+UID_DEV=$(python3 - <<PYEOF
+import json, urllib.request
+r = urllib.request.Request('$BASE/wumi/api/v1/users?keyword=$USERKEY&size=5',
+    headers={'X-Wumi-Api-Key': '$APIKEY'})
+print(json.load(urllib.request.urlopen(r))['data']['users'][0]['id'])
+PYEOF
+)
+codecheck "POST /users/$UID_DEV（临时降为 class=0）→ 200" 200 "$(jpost "/wumi/api/v1/users/$UID_DEV" '{"class":0}')"
+codecheck "GET /sub/{token}/v2ray（未购）→ 200" 200 "$(curl -sS -o "$BODY" -w '%{http_code}' "$BASE/sub/$SUBTOKEN/v2ray")"
+pycheck "未购 token 的订阅下载被拒（未开通）" "d['ret']==0 and '\u672a\u5f00\u901a' in d['msg']"
+codecheck "POST /users/$UID_DEV（恢复已购 class=1/365天）→ 200" 200 "$(jpost "/wumi/api/v1/users/$UID_DEV" '{"class":1,"expire_days":365}')"
+pycheck "恢复已购生效" "d['ret']==1 and d['data']['class']==1"
+SUB_RESTORE=$(curl -sS "$BASE/sub/$SUBTOKEN/vless")
+case "$SUB_RESTORE" in
+  *vless://*) echo "  PASS  已购恢复后订阅可下载"; pass=$((pass + 1));;
+  *) echo "  FAIL  已购恢复后订阅可下载  <- $(printf '%s' "$SUB_RESTORE" | head -c 120)"; fail=$((fail + 1));;
+esac
+
 
 codecheck "GET /orders → 200" 200 "$(req GET /wumi/api/v1/orders -H "X-Wumi-User-Key: $USERKEY")"
 pycheck "/orders ret=1" "d['ret']==1"
