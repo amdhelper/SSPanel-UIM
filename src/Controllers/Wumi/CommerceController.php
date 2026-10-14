@@ -79,31 +79,34 @@ final class CommerceController extends BaseController
         $subscribed = Subscribe::isSubscribed($user);
 
         $nodes = [];
-        $sub = Subscribe::getUserNodes($user);
-        foreach ($sub as $node) {
-            if (! $subscribed) {
+        if (! $subscribed) {
+            // 未购＝「节点橱窗」：与网站「节点列表」同口径（show_all_nodes=true）——
+            // 全部节点只回名字（生产节点 node_class≥1，走管理员等级过滤会被清空）。
+            foreach (Subscribe::getUserNodes($user, true) as $node) {
                 $nodes[] = [
                     'id' => (int) $node->id,
                     'name' => $node->name,
                     'locked' => true,
                 ];
-                continue;
             }
-            $uri = null;
-            if ((int) $node->sort === Xray::SORT_VLESS) {
-                $uri = Xray::vlessUriForNode($node, (string) $user->uuid);
+        } else {
+            foreach (Subscribe::getUserNodes($user) as $node) {
+                $uri = null;
+                if ((int) $node->sort === Xray::SORT_VLESS) {
+                    $uri = Xray::vlessUriForNode($node, (string) $user->uuid);
+                }
+                $nodes[] = [
+                    'id' => (int) $node->id,
+                    'name' => $node->name,
+                    'server' => $node->server,
+                    'type_label' => $node->sort(),
+                    'node_class' => (int) $node->node_class,
+                    'traffic_rate' => (float) $node->traffic_rate,
+                    'is_online' => $node->getNodeOnlineStatus() === 1,
+                    'vless_uri' => $uri,
+                    'locked' => false,
+                ];
             }
-            $nodes[] = [
-                'id' => (int) $node->id,
-                'name' => $node->name,
-                'server' => $node->server,
-                'type_label' => $node->sort(),
-                'node_class' => (int) $node->node_class,
-                'traffic_rate' => (float) $node->traffic_rate,
-                'is_online' => $node->getNodeOnlineStatus() === 1,
-                'vless_uri' => $uri,
-                'locked' => false,
-            ];
         }
 
         return self::ok($response, [
